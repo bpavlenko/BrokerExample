@@ -1,0 +1,128 @@
+app-invoice {
+
+  label{
+    color: rgba(0, 0, 0, 0.38);
+  }
+
+  .invoice-table{
+    //overflow-x: auto;
+  }
+
+  table{
+
+    th{
+      padding: 5px;
+    }
+
+    td{
+      vertical-align: top;
+      padding-left: 5px;
+      padding-right: 5px;
+
+      &:first-child{
+        width: 52px;
+        text-align: center;
+
+        .mat-input-element{
+          text-align: center;
+        }
+      }
+    }
+
+    iq-select2{
+
+      .select2-container {
+
+        .select2-selection-container.form-control {
+          margin-top: 11px;
+        }
+
+        &.simple-selection input {
+            bottom: 6px;
+        }
+      }
+    }
+
+    thead th{
+        color: rgba(0, 0, 0, 0.38);
+        font-weight: 400;
+        text-align: left;
+        line-height: 1;
+    }
+
+    .total-row td{
+      font-weight: 700;
+    }
+
+    &.mobile-table{
+      display: flex;
+      align-items: flex-start;
+      flex-direction: row;
+
+      .theads-wrapper ,tbody{
+        display: inline-block;
+
+        th,td{
+          display: block;
+          height: 60px;
+          -webkit-box-sizing: border-box;
+          -moz-box-sizing: border-box;
+          box-sizing: border-box;
+
+          button{
+            margin-top: 15px;
+          }
+        }
+
+        th{
+          padding-top: 25px;
+        }
+
+        td{
+          max-width: 160px;
+        }
+
+        .total-row td{
+          display: inline-block;
+          height: auto;
+        }
+
+        .select2-selection-container{
+          padding: 2px;
+        }
+      }
+    }
+  }
+
+  .date-inp{
+    width: 400px;
+  }
+
+  .invoice-inp{
+    width: 400px;
+    margin-top: 4px;
+  }
+
+  .valid-b{
+    display: block;
+    margin-top: -11px;
+    line-height: 1;
+  }
+
+  .valid{
+    display: block;
+    margin-top: 4px;
+    line-height: 1;
+  }
+
+  .new-invoice{
+    margin-left: 0.33333rem;
+  }
+}
+
+@media (max-width: 1280px) {
+
+  .date-inp, .invoice-inp{
+    width: 250px;
+  }
+}

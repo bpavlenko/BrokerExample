@@ -1,0 +1,384 @@
+<div class="invoice-details">
+  <div>
+    <h2>Детали</h2>
+    <button *ngIf="!invoice?.CreditForm"
+            type="button" md-raised-button
+            color="primary" class="mr-2 mt-1"
+            [disabled]="!checkIsInRole('Seller:Create')"
+            (click)="deleteInvoice()">Удалить</button>
+  </div>
+
+
+  <md-card>
+    <md-card-content *ngIf="invoice?.ConsumerCreditStatusId==36">
+      <button type="button" md-raised-button
+              color="primary" class="mr-2 mb-2"
+              [disabled]="!checkIsInRole('Seller:IssueGoods')"
+              (click)="sendOtp()">Товар продан</button>
+      <div *ngIf="isOtpSend">
+        <div>
+          <label>Введите код подтверждения с смс</label>
+        </div>
+        <md-input-container dividerColor="primary" class="mr-xs">
+          <input mdInput type="number" #input [(ngModel)]="OTP" />
+        </md-input-container>
+
+      </div>
+      <button *ngIf="isOtpSend" type="button" md-raised-button color="primary" class="mr-2 mt-1" (click)="giveOutGoods()">Подтвердить</button>
+    </md-card-content>
+  </md-card>
+
+  <!--<form [formGroup]="returnForm" (ngSubmit)="save(returnForm)">-->
+  <form>
+    <md-card>
+      <md-card-content>
+        <div class="invoice-details__row">
+          <div class="invoice-details__col">Точка продажи</div>
+          <div class="invoice-details__col">{{getNameFromDict('shops',invoice?.ShopId)}}</div>
+        </div>
+        <div class="invoice-details__row">
+          <div class="invoice-details__col">Торговая точка</div>
+          <div class="invoice-details__col">{{getNameFromDict('salePoints',invoice?.SalePoint)}}</div>
+        </div>
+        <div class="invoice-details__row">
+          <div class="invoice-details__col">Дата счета-фактуры</div>
+          <div class="invoice-details__col">{{invoice?.InvoiceDateTime | timezoneDate: 'dd-MM-yyyy HH:mm'}}</div>
+        </div>
+        <div class="invoice-details__row">
+          <div class="invoice-details__col">Номер телефона клиента</div>
+          <div class="invoice-details__col">{{invoice?.InvoiceNumber}}</div>
+        </div>
+        <div class="invoice-details__row">
+          <div class="invoice-details__col">Общая сумма</div>
+          <div class="invoice-details__col">{{invoice?.TotalAmount}}</div>
+        </div>
+      </md-card-content>
+    </md-card>
+
+    <md-card>
+      <div class="ml-2 pt-2">
+        <button *ngIf="returnAccessible"
+                type="button" md-raised-button
+                color="primary" class="mr-2 mb-1"
+                (click)="showReturn()" [disabled]="!isInvoiceReturnable && !checkIsInRole('Seller:Return')">Возврат</button>
+        <span class="danger" *ngIf="!isInvoiceReturnable && returnAccessible">Истек строк возврата товара (14 дней)</span>
+        <div *ngIf="!returnColumnHidden" class="mb-1">
+          <div>
+            <label>Номер возвратной накладной</label>
+          </div>
+          <md-input-container dividerColor="primary">
+            <input mdInput type="text" [(ngModel)]="returnData.returnInvoice" name="returnInvoice" required #returnInvoice="ngModel">
+
+          </md-input-container>
+          <div [hidden]="returnInvoice.valid || returnInvoice.untouched" class="valid-msg alert alert-danger">Это обязательное поле</div>
+
+          <div *ngIf="isOtpSend">
+            <div>
+              <label>Введите код подтверждения с смс</label>
+            </div>
+            <md-input-container dividerColor="primary" class="mr-xs">
+              <input mdInput type="text" [(ngModel)]="returnData.returnOTP" name="returnOTP" required #returnOTP="ngModel"/>
+            </md-input-container>
+            <div [hidden]="returnOTP.valid || returnOTP.untouched" class="valid-msg alert alert-danger">Это обязательное поле</div>
+          </div>
+        </div>
+      </div>
+      <md-card-content>
+        <div class="invoice-details__table-holder">
+          <table class="invoice-details__table">
+            <thead>
+            <th>№</th>
+            <th>Наименование</th>
+            <th>Количество</th>
+            <th>Общая цена</th>
+            <th>Категория</th>
+            <th>Возвраты</th>
+            <th>Остаток</th>
+            <th *ngIf="!returnColumnHidden">
+              Количество для возврата
+            </th>
+            </thead>
+            <tbody>
+            <tr *ngFor="let item of invoice?.Items; let i = index">
+              <td>{{item?.RowId}}</td>
+              <td>{{item?.Article}}</td>
+              <td>{{item?.Count}}</td>
+              <td>{{item?.Price * item?.Count}}</td>
+              <td>{{item?.ProductGroup}}</td>
+              <td #alreadyReturned>{{getCountOfReturns(item.RowId)}}</td>
+              <td>{{item?.Count - getCountOfReturns(item.RowId)}}</td>
+              <td *ngIf="!returnColumnHidden">
+                <md-input-container dividerColor="primary">
+                  <input mdInput step="1" type="number" [(ngModel)]="item.NumberReturn" name="numberReturn" [ngModelOptions]="{updateOn: 'blur'}"
+                         (ngModelChange)="validateNumberReturn($event, item.Count, i, alreadyReturned)">
+                </md-input-container>
+                <div class="valid-msg mb-1" *ngIf="validMsgReturnNumber[i]">Некоректное количество</div>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <div *ngIf="!returnColumnHidden">
+          <button type="button" md-raised-button
+                  [disabled]="checkValidity() || !(returnInvoice?.valid && returnOTP?.valid) || !totalReturnNumber || returnGoodsIsSending"
+                  color="primary" class="mr-2 mt-1" (click)="returnGoods()">Сохранить</button>
+          <div *ngIf="returnGoodsIsSending" class="button-spinner">
+            <md-progress-spinner mode="indeterminate" color="accent"></md-progress-spinner>
+          </div>
+          <button type="button" md-raised-button color="primary" class="mr-2 mt-1" (click)="cancelReturn()">Отмена</button>
+        </div>
+      </md-card-content>
+    </md-card>
+  </form>
+
+
+  <div class="banks-return" *ngIf="returnsForTable?.length">
+    <h2 class="table-title">Возвраты</h2>
+
+    <div class="banks-table">
+      <ngx-datatable
+        #returning
+        appNgxResizeWatcher
+        class="material mt-1"
+        [messages]="messages"
+        [rows]="returnsForTable"
+        [columnMode]="'force'"
+        [headerHeight]="50"
+        [footerHeight]="50"
+        [rowHeight]="50"
+        [scrollbarH]="true">
+
+        <ngx-datatable-row-detail [rowHeight]="200" #myDetailRow >
+          <ng-template let-row="row" ngx-datatable-row-detail-template>
+            <div fxLayout="row">
+              <table class="banks-table__details">
+                <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Наименования</th>
+                  <th>К-во возврата</th>
+                  <th>Цена</th>
+                  <th>Сумма</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr *ngFor="let good of row.Details.Rows[0].Rows">
+                  <td>{{good.RowId}}</td>
+                  <td>{{getReturnProp(good.RowId, 'Article')}}</td>
+                  <td>{{good.Count}}</td>
+                  <td>{{getReturnProp(good.RowId, 'Price')}}</td>
+                  <td>{{good.Count * getReturnProp(good.RowId, 'Price')}}</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </ng-template>
+        </ngx-datatable-row-detail>
+
+        <ngx-datatable-column
+          [width]="70"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false">
+          <ng-template let-row="row" ngx-datatable-cell-template>
+            <div class="detail-col"
+                 [class.datatable-icon-right]="!row.$$expanded"
+                 [class.datatable-icon-down]="row.$$expanded"
+                 (click)="toggleExpandRow(row)">Детали
+            </div>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column
+          [width]="100"
+          [resizeable]="false"
+          [sortable]="false"
+          [draggable]="false"
+          [canAutoResize]="false">
+          <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
+            <div>
+              <button
+                md-icon-button mdTooltip="Печать"
+                [mdTooltipPosition]="'above'"
+                (click)="selectReturn(row)"
+              ><md-icon class="action-icon">print</md-icon></button>
+
+              <button
+                md-icon-button mdTooltip="Загрузка"
+                (click)="openUpload(row)"
+                [mdTooltipPosition]="'above'"
+              ><md-icon class="action-icon">get_app</md-icon></button>
+            </div>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column prop="InvoiceDate">
+          <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+            <span>Дата</span>
+          </ng-template>
+          <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+            <span>{{value | timezoneDate: 'dd-MM-yyyy HH:mm'}}</span>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column prop="NumberReturnsInvoice">
+          <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+            <span>Возвратноя накладная</span>
+          </ng-template>
+          <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+            <span>{{value}}</span>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column prop="UserName">
+          <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+            <span>Продавец</span>
+          </ng-template>
+          <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+            <span>{{value}}</span>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column prop="TotalAmount">
+          <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+            <span>Сумма возврата</span>
+          </ng-template>
+          <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+            <span>{{value}}</span>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column prop="StatusId">
+          <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+            <span>Статус</span>
+          </ng-template>
+          <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+            <span>{{getDictValueByProp('vCreditCommercialInvoicesReturnsStatus', row.StatusId, 'Id', 'Name')}}</span>
+          </ng-template>
+        </ngx-datatable-column>
+
+        <ngx-datatable-column prop="Error">
+          <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+            <span>Ошибка</span>
+          </ng-template>
+          <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+            <span>{{value}}</span>
+          </ng-template>
+        </ngx-datatable-column>
+      </ngx-datatable>
+    </div>
+
+    <div *ngIf="returnSelected">
+      <md-card>
+        <md-card-content>
+          <h3 class="table-title">Печать документов по возвратной накладной № {{selectedReturn.NumberReturnsInvoice}}</h3>
+
+          <app-print-documents [documents]="printFormsList"
+                               [roles]="'Seller:Return'"
+                               [returnId]="selectedReturn.Id"></app-print-documents>
+
+        </md-card-content>
+      </md-card>
+    </div>
+    <div *ngIf="returnUploadSelected">
+      <md-card>
+        <md-card-content>
+          <h3 class="table-title">Загрузка документов по возвратной накладной № {{selectedReturnUpload.NumberReturnsInvoice}}</h3>
+
+          <div>
+            <div class="upload-element" *ngFor="let dictFileName of uploadFormList">
+              <div class="upload-element__name" fxLayout="row" fxLayoutAlign="start center">
+                <button
+                  type="button"
+                  [disabled]="!checkIsInRole('Seller:Return')"
+                  md-raised-button md-button-sm color="primary" class="mr-1"
+                  (click)="uploadFile(dictFileName.Code)"
+                >
+                  <md-icon class="action-icon">add</md-icon> Файл <md-icon class="action-icon">attachment</md-icon>
+                </button>
+                <button
+                  type="button"
+                  [disabled]="!checkIsInRole('Seller:Return')"
+                  md-raised-button md-button-sm color="primary" class="mr-1"
+                  (click)="addPhoto(dictFileName)"
+                >
+                  <md-icon class="action-icon">add</md-icon> Фото <md-icon class="action-icon">linked_camera</md-icon>
+                </button>
+                <div class="dict-file-name">{{dictFileName.Name}}</div>
+              </div>
+              <div>
+                <div class="upload-element__file" *ngFor="let file of uploadedDocs[dictFileName.Code]; let i = index">
+                  <!--<div class="btn-order">-->
+                  <!--<button md-icon-button type="button" mdTooltip="Переместить вверх" color="primary">-->
+                  <!--<md-icon class="action-icon">keyboard_arrow_up</md-icon>-->
+                  <!--</button>-->
+                  <!--<button md-icon-button type="button" mdTooltip="Переместить вниз" color="primary">-->
+                  <!--<md-icon class="action-icon">keyboard_arrow_down</md-icon>-->
+                  <!--</button>-->
+                  <!--</div>-->
+                  <button type="button" md-icon-button mdTooltip="Удалить" color="primary"
+                          [disabled]="!checkIsInRole('Seller:Return')"
+                          (click)="deleteFile(file)"><md-icon class="action-icon">delete</md-icon>
+                  </button>
+                  <a href="{{host + file.url}}" target="_blank">
+                    <button type="button" md-icon-button mdTooltip="Предварительный просмотр" color="primary">
+                      <md-icon class="action-icon">visibility</md-icon>
+                    </button>
+                  </a>
+                  <div class="over-el"><img [src]="file?.thumbnail_url" alt=""></div>
+                  <span class="ml-1">{{file.name}}</span>
+                </div>
+              </div>
+
+              <div  [hidden]="dictFileName.needHideVideo">
+
+                <div class="mt-1 mb-1 photo">
+
+                  <video [hidden]="dictFileName.needHideVideo" #video id="{{'video-' + dictFileName.Code}}" autoplay></video>
+                  <button
+                    *ngIf="!dictFileName.needHideVideo"
+                    (click)="takePhotoUpload(dictFileName)"
+
+                    md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+                    type="button">Сделать снимок</button>
+                  <canvas id="{{ 'canvas-' + dictFileName.Code }}" width="640" height="480"></canvas>
+                  <button
+                    *ngIf="dictFileName.needHideVideo"
+                    type="button"
+                    md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+                    (click)="showVideoUpload(false, dictFileName)"
+                  >
+                    Изменить
+                  </button>
+                  <button
+                    *ngIf="!dictFileName.needHideVideo"
+                    type="button"
+                    md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+                    (click)="showVideo(true, dictFileName)"
+                  >
+                    Отменить
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div><input #uploadableFiles type="file" multiple="false" style="display:none;" (change)="upload($event)"></div>
+
+            <button md-raised-button md-button-sm color="primary" class="mt-2 ml-1" type="button"
+                    [disabled]="!checkIsInRole('Seller:Return')"
+                    (click)="sendDocuments()">
+              Отправить документы в банк
+            </button>
+            <div *ngIf="sendSignDocumentsBtnDisabled" class="button-spinner">
+              <md-progress-spinner mode="indeterminate" color="accent"></md-progress-spinner>
+            </div>
+          </div>
+
+        </md-card-content>
+      </md-card>
+    </div>
+  </div>
+</div>
+
+
+

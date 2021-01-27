@@ -1,0 +1,64 @@
+<div class="wrapper mt-1 ">
+  <div class="form">
+    <form #form="ngForm" (ngSubmit)="onSubmit()" novalidate>
+      <app-tab
+        [activeSections]="activeSections"
+        [(ngModel)]="activeSectionValue"
+        [(validationData)]="validationTree"
+        name="data"
+      >
+      </app-tab>
+      <div class="mb-xs mr-xs">
+        <div *ngIf="!isDisabledForm && !isStepHasAnotherView()" style="margin-left:0.33333rem">
+          <button
+            class="mb-xs mr-xs"
+            md-raised-button md-button-sm color="primary"
+            type="Submit"
+          >
+            Сохранить
+          </button>
+          <button
+            class="mb-xs mr-xs"
+            type="button"
+            md-raised-button md-button-sm color="primary"
+            (click)="clearAction()"
+          >
+            Очистить
+          </button>
+          <button
+            class="mb-xs mr-xs"
+            type="button"
+            md-raised-button md-button-sm color="primary"
+            (click)="cancelAction()"
+          >
+            Отменить
+          </button>
+        </div>
+        <div *ngIf="isDisabledForm" style="margin-left:0.33333rem">
+          <button
+            class="mb-1"
+            type="button"
+            md-raised-button md-button-sm color="primary"
+            (click)="cancelAction()"
+          >
+            К списку
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="step-list">
+    <!--<li class="step" *ngFor="let step of formStructure.Steps;">-->
+    <div class="step"
+         [ngClass]="{'current-step': currentStep == step.Id}"
+         *ngFor="let step of formStructure.Steps; let i = index">
+      <div class="step-info-wrap" (click)="onSubmit(step.Id)">
+        <span fxHide.xs>{{step.Name}}</span>
+        <button md-mini-fab>{{i+1}}</button>
+      </div>
+      <div class="way-to-next-step"></div>
+    </div>
+    <!--<button [routerLink]="['.']" [queryParams]="{step: step.Id}">{{step.Name}}</button>-->
+    <!--</li>-->
+  </div>
+</div>

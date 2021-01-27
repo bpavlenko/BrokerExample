@@ -1,0 +1,203 @@
+<div class="invoice-list">
+  <h2>Список счет-фактур</h2>
+
+  <div class="invoice-list__collapse">
+    <md-card class="mt-1" (click)="toggleSearchPanel()">
+      <md-card-content>
+        <div class="collapse-toggle">
+          <span *ngIf="searchPanelClosed"><md-icon color="primary" class="action-icon">keyboard_arrow_down</md-icon>Окрыть</span>
+          <span *ngIf="!searchPanelClosed"><md-icon color="primary" class="action-icon">keyboard_arrow_up</md-icon>Закрыть</span> панель поиска
+        </div>
+      </md-card-content>
+    </md-card>
+    <div *ngIf="!searchPanelClosed">
+      <form [formGroup]="searchInvoiceForm" (ngSubmit)="setPage()">
+        <md-card class="mt-1">
+          <md-card-content>
+            <div class="invoice-list__fields">
+              <md-input-container dividerColor="primary" class="mr-xs mb-1">
+                <input mdInput formControlName="iin" placeholder="ИИН" >
+              </md-input-container>
+              <md-input-container dividerColor="primary" class="mr-xs mb-1 ml-1 mr-1">
+                <input mdInput formControlName="invoiceNumber" placeholder="Номер счета-фактуры" >
+              </md-input-container>
+              <md-input-container dividerColor="primary" class="mr-xs mb-1">
+                <input mdInput formControlName="contractCode" placeholder="Номер кредитного договора" >
+              </md-input-container>
+            </div>
+            <div class="invoice-list__selects">
+              <div>
+                <ng-container>
+                  <label class="">Продавец</label>
+                  <iq-select2 css="form-control input-sm" placeholder="Поиск..."
+                              formControlName="userId"
+                              [dataSourceProviderName]="'sellers'"
+                              [dataSourceProvider]="getItemsForSelect({val: 'UserId', text: 'FIO'}).bind(this)"
+                              [iqSelect2ItemAdapter]="entityToIqSelect2Item({val: 'UserId', text: 'FIO'})"
+                              referenceMode="id"
+                              [messages]="{noResultsAvailableMsg: selectNoResultMsg}"
+                              [minimumInputLength]='0' [multiple]='false'
+                              [selectedProvider]="getItems({val: 'UserId', text: 'FIO'})">
+                  </iq-select2>
+                </ng-container>
+              </div>
+              <div>
+                <ng-container>
+                  <label class="">Магазин</label>
+                  <iq-select2 css="form-control input-sm" placeholder="Поиск..."
+                              formControlName="shopId"
+                              [dataSourceProviderName]="'shops'"
+                              [dataSourceProvider]="getItemsForSelect({val: 'Id', text: 'Name'}).bind(this)"
+                              [iqSelect2ItemAdapter]="entityToIqSelect2Item({val: 'Id', text: 'Name'})"
+                              referenceMode="id"
+                              [messages]="{noResultsAvailableMsg: selectNoResultMsg}"
+                              [minimumInputLength]='0' [multiple]='false'
+                              [selectedProvider]="getItems({val: 'Id', text: 'Name'})">
+                  </iq-select2>
+                </ng-container>
+              </div>
+            </div>
+            <div>
+              <my-date-range-picker name="DateRange" [options]="myDateRangePickerOptions"
+                                    (inputFocusBlur)="onInputFocusBlur($event)"
+                                    placeholder="Период"
+                                    formControlName="DateRange"
+                                    [class.mydrp-focus]="isDrpFocus">
+              </my-date-range-picker>
+              <md-checkbox formControlName="goodsNotIssued" class="invoice-list__checkbox">
+                скрыть счета со статусом "Товар продан"
+              </md-checkbox>
+
+
+
+            </div>
+            <div>
+              <button md-raised-button md-button-sm color="primary">Поиск</button>
+              <button md-raised-button md-button-sm color="primary" (click)="resetFilter()">Очистить фильтр</button>
+            </div>
+          </md-card-content>
+        </md-card>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <button md-raised-button
+            md-button-sm color="primary"
+            class="ml-xs mt-1" type="button"
+            [disabled]="!checkIsInRole('Seller:Create')"
+            routerLink="/invoice">Создать счет-фактуру
+    </button>
+    <button md-raised-button md-button-sm
+            type="button" color="primary"
+            [disabled]="!checkIsInRole('Seller:Reports')"
+            (click)="openPrintReports()">Печать отчётов</button>
+  </div>
+
+  <ngx-datatable
+    appNgxResizeWatcher
+    class="material mt-1"
+    [messages]="messages"
+    [rows]="invoices"
+    [columnMode]="'force'"
+    [headerHeight]="50"
+    [footerHeight]="50"
+    [rowHeight]="50"
+    [scrollbarH]="true"
+    [externalPaging]="true"
+    [count]="page.totalElements"
+    [offset]="page.offset"
+    [limit]="page.limit"
+    (page)="setPage($event)">
+
+    <ngx-datatable-column
+      [width]="50"
+      [resizeable]="false"
+      [sortable]="false"
+      [draggable]="false"
+      [canAutoResize]="false">
+      <ng-template ngx-datatable-cell-template let-value="value" let-row="row">
+        <div>
+          <button
+            md-icon-button mdTooltip="Просмотреть"
+            color="primary"
+            class="invoice-list__table-btn"
+            [routerLink]="['/invoice/' + row.Id]"
+          ><md-icon class="action-icon">visibility</md-icon></button>
+        </div>
+      </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column prop="DateInvoice">
+      <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+        <span>Дата</span>
+      </ng-template>
+      <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+        <span>{{value | timezoneDate: 'dd-MM-yyyy HH:mm'}}</span>
+      </ng-template>
+    </ngx-datatable-column>
+
+    <!--Shop-->
+
+    <!--Seller-->
+
+    <ngx-datatable-column prop="ShopName">
+      <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+        <span>Магазин</span>
+      </ng-template>
+      <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+        <span>{{value}}</span>
+      </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column prop="UserName">
+      <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+        <span>Продавец</span>
+      </ng-template>
+      <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+        <span>{{value}}</span>
+      </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column prop="NumberInvoice">
+      <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+        <span>Номер счета</span>
+      </ng-template>
+      <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+        <span>{{value}}</span>
+      </ng-template>
+    </ngx-datatable-column>
+
+    <ngx-datatable-column prop="TotalAmount">
+      <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+        <span>Сумма</span>
+      </ng-template>
+      <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+        <span >{{value}} {{row.FirstName}} {{row.SecondName}}</span>
+      </ng-template>
+    </ngx-datatable-column>
+
+    <!--<ngx-datatable-column prop="CountOfElements">-->
+      <!--<ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>-->
+        <!--<span>К-во едениц</span>-->
+      <!--</ng-template>-->
+      <!--<ng-template let-row="row" let-value="value" ngx-datatable-cell-template>-->
+        <!--<span>{{value}}</span>-->
+      <!--</ng-template>-->
+    <!--</ngx-datatable-column>-->
+
+    <ngx-datatable-column prop="ConsumerCreditStatusId">
+      <ng-template let-column="column" let-sort="sortFn" ngx-datatable-header-template>
+        <span>Статус</span>
+      </ng-template>
+      <ng-template let-row="row" let-value="value" ngx-datatable-cell-template>
+        <span>{{getNameFromDict('status',value)}}</span>
+      </ng-template>
+    </ngx-datatable-column>
+
+  </ngx-datatable>
+
+</div>
+
+
+

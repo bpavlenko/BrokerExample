@@ -1,0 +1,391 @@
+<md-card
+  class="main"
+  *ngFor="let activeSection of activeSections;"
+  >
+  <md-card-title class="header">
+    {{activeSection.Name}}
+  </md-card-title>
+
+  <ng-container *ngFor="let question of activeSection.Questions; trackBy: trackByFn">
+    <md-card-content *ngIf="showQuestion(question, value)">
+      <div class="question-label">
+        <label [attr.for]="question.Field" [hidden]="question.HideLabel">{{question.Display}}</label><label *ngIf="question.Mandatory" class="mandatory-label"> *</label>
+      </div>
+
+      <!--<input type="text" [id]="question.Field">-->
+      <div [ngSwitch]="question.Type" style="display:inline-block;" class="question-body">
+
+        <ng-container *ngSwitchCase="'Date'">
+          <my-date-picker [options]="getDatePickerOptions(question)"
+                          [ngModel]= "(value || [])[question.Field] | transformDate" (ngModelChange)="ourValidate($event,value,question)"
+                          (inputFocusBlur)="onInputSimpleFocusBlur($event, params, someth)"
+                          placeholder="{{question.PlaceHolder}}"
+                          [class.mydp-focus]="isDpFocus"
+                          [disabled]="isDisabledForm || question.Readonly"
+          >
+          </my-date-picker>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'Text'">
+          <md-input-container dividerColor="primary" style="width: 100%;" *ngIf="!question?.QuestionData?.Rows">
+            <input mdInput
+                   type="text"
+                   placeholder="{{question.PlaceHolder}}"
+                   [id]="question.Field"
+                   [ngModel]="(value || [])[question.Field]" (ngModelChange)="modelChangeInputNumber($event,value,question)"
+                   [disabled]="isDisabledForm || question.Readonly"
+            >
+          </md-input-container>
+
+          <md-input-container dividerColor="primary" style="width: 100%;" *ngIf="question?.QuestionData?.Rows">
+            <textarea mdInput
+             placeholder="{{question.PlaceHolder}}"
+             [attr.rows] = "question.QuestionData.Rows"
+             [id]="question.Field"
+             [ngModel]="(value || [])[question.Field]" (ngModelChange)="ourValidate($event,value,question)"
+             [disabled]="isDisabledForm || question.Readonly"
+            ></textarea>
+          </md-input-container>
+
+        </ng-container>
+
+        <div *ngSwitchCase="'Number'">
+          <!-- Todo fixed this! -->
+          <md-input-container dividerColor="primary" style="width: 100%;"  floatPlaceholder="never" *ngIf="question.QuestionData['data-currency']">
+            <input mdInput
+                   [textMask]="{mask: mask}"
+                   type="text"
+                   placeholder="{{question.PlaceHolder}}"
+                   [id]="question.Field"
+                   [ngModel]="(value || [])[question.Field]" (ngModelChange)="modelChangeInputNumber($event,value,question)"
+                   [disabled]="isDisabledForm || question.Readonly"
+            >
+          </md-input-container>
+          <md-input-container dividerColor="primary" style="width: 100%;"  floatPlaceholder="never" *ngIf="!question.QuestionData['data-currency']">
+            <input mdInput
+                   type="number"
+                   placeholder="{{question.PlaceHolder}}"
+                   [id]="question.Field"
+                   [ngModel]="(value || [])[question.Field]" (ngModelChange)="modelChangeInputNumber($event,value,question)"
+                   [disabled]="isDisabledForm || question.Readonly"
+                   [attr.min]="getIntervalValueForInputNumber('min', question, value)"
+                   [attr.max]="getIntervalValueForInputNumber('max', question, value)"
+            >
+          </md-input-container>
+        </div>
+        <div class="mt-1 mb-1 photo" *ngSwitchCase="'Image'">
+          <div>
+            <img [src]="(value || [])[question.Field]" alt="">
+          </div>
+        </div>
+        <ng-container *ngSwitchCase="'Select'">
+          <ng-container *ngIf="!hideSelectsBeforGetValues || question.QuestionData.Action">
+            <iq-select2
+              class="tab-form-select"
+              css="form-control input-sm" placeholder="Поиск..."
+              [dataSourceProvider]="getCallBackForDataSourceProvider(question, value)"
+              [dataSourceProviderName]="question.QuestionData.Set"
+              [iqSelect2ItemAdapter]="getCallBackForIqSelect2ItemAdapter(question)"
+              [minimumInputLength]='0' referenceMode='id' [multiple]='question?.QuestionData?.Multi'
+              [disabled]="isDisabledForm || question.Readonly"
+              [messages]="{noResultsAvailableMsg: selectNoResultMsg}"
+              (onSelect)="onSelect($event, value, question)"
+              (onRemove)="onRemove($event, value, question)" [selectedProvider]="getCallBackForSelectedProvider(question, value)"
+              [ngModel]="(value || [])[question.Field]"
+              (ngModelChange)="ourValidate($event,value,question)"
+              style="width: 20%"
+            ></iq-select2>
+            <!--<button type="button" (click)="getListOfProducts(value, question)">click</button>-->
+            <!--<span>{{dynamicFormService.selectsData[question?.QuestionData?.Set].active[(value || [])[question.Field]]?.ListOfProducts | json}}</span>-->
+            <div *ngIf="question.Field == 'ConsumerCreditCommercialInvoices' && getListOfProducts(value, question)" class="product-table">
+              <table [ngClass]="!desktop? 'mobile-table':''">
+
+                <thead *ngIf="desktop">
+                  <th>Наименование</th>
+                  <th>Бренд</th>
+                  <th>Количество</th>
+                  <th>Описание</th>
+                  <th>Сервис</th>
+                  <th>Цена</th>
+                  <th></th>
+                </thead>
+
+                <div *ngIf="!desktop" class="theads-wrapper">
+                  <thead *ngFor="let product of getListOfProducts(value, question)">
+                    <th>Наименование</th>
+                    <th>Бренд</th>
+                    <th>Количество</th>
+                    <th>Описание</th>
+                    <th>Сервис</th>
+                    <th>Цена</th>
+                    <th></th>
+                  </thead>
+                </div>
+
+                <tbody>
+                  <tr *ngFor="let product of getListOfProducts(value, question) ">
+                    <td>{{product?.Article}}</td>
+                    <td>{{product?.Brand}}</td>
+                    <td>{{product?.Count}}</td>
+                    <td>{{product?.Description}}</td>
+                    <td>{{product?.IsService}}</td>
+                    <td>{{product?.Price}}</td>
+                    <td>
+                      <span *ngIf="product?.ArticleCode">Рассрочка</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </ng-container>
+          <ng-container *ngIf="hideSelectsBeforGetValues && !question.QuestionData.Action">
+            <md-progress-spinner mode="indeterminate" color="accent" class="mt-1"></md-progress-spinner>
+          </ng-container>
+        </ng-container>
+        <button
+          type="button"
+          *ngSwitchCase="'Calculator'"
+          md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+          [disabled]="isDisabledForm || question.Readonly"
+          (click)="showCreditCalc(value)"
+        >
+          Просмотр
+        </button>
+        <button
+          type="button"
+          *ngSwitchCase="'CalculateCreditAmount'"
+          md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+          [disabled]="isDisabledForm || question.Readonly"
+          (click)="calculateCreditAmount(value, question)"
+        >
+          Рассчитать
+        </button>
+        <div class="mt-1 mb-1 photo" *ngSwitchCase="'Photo'">
+          <div *ngIf="value[question.Field]">
+            <img [hidden]="!question.needHideVideo" [src]="value[question.Field]" alt="">
+          </div>
+          <video [hidden]="question.needHideVideo" #video id="{{'video-' + question.Field}}" autoplay></video>
+          <button
+            *ngIf="!question.needHideVideo"
+            (click)="takePhoto(value, question)"
+            [disabled]="isDisabledForm || question.Readonly"
+            md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+            type="button">Сделать снимок</button>
+          <canvas id="{{ 'canvas-' + question.Field }}" width="640" height="480"></canvas>
+          <button
+            *ngIf="question.needHideVideo"
+            type="button"
+            md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+            (click)="showVideo(false, question)"
+            [disabled]="isDisabledForm || question.Readonly || !!question.QuestionData['PhotoHidden']"
+          >
+            Изменить фото
+          </button>
+          <button
+            *ngIf="!question.needHideVideo"
+            type="button"
+            md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+            (click)="showVideo(true, question)"
+            [disabled]="isDisabledForm || question.Readonly"
+          >
+            Отменить
+          </button>
+
+          <div>
+            <input #uploadableFiles type="file" multiple="false" style="display:none;" accept="image/*" (change)="uploadPhoto($event, value, question)">
+            <button
+              *ngIf="question.needHideVideo"
+              type="button"
+              md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+              (click)="uploadableFiles.click()"
+              [disabled]="isDisabledForm || question.Readonly || !!question.QuestionData['FileHidden']"
+            >
+              Добавить файл
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-1 mb-1" *ngSwitchCase="'ClientSign'">
+          <div *ngIf="value?.ClientSign" class="signature-preview">
+            <img [src]="value?.ClientSign" alt="">
+          </div>
+          <button
+            type="button"
+            md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+            [disabled]="isDisabledForm || question.Readonly"
+            (click)="openClientSign(value, question)"
+          >
+            {{question.Display}}
+          </button>
+        </div>
+
+        <div class="mt-1 mb-1"  *ngSwitchCase="'Upload'">
+          <div class="upload-element" *ngFor="let dictFileName of question?.UploadForms">
+            <div class="upload-element__name" fxLayout="row" fxLayoutAlign="start center">
+              <button
+                type="button"
+                [disabled]="!checkIsInRole('Agent:Edit') || isDisabledForm || question.Readonly"
+                md-raised-button md-button-sm color="primary" class="mr-1"
+                (click)="uploadFile(dictFileName.Code)"
+              >
+                <md-icon class="action-icon">add</md-icon> Файл <md-icon class="action-icon">attachment</md-icon>
+              </button>
+              <button
+                type="button"
+                [disabled]="!checkIsInRole('Agent:Edit') || isDisabledForm || question.Readonly"
+                md-raised-button md-button-sm color="primary" class="mr-1"
+                (click)="addPhoto(dictFileName)"
+              >
+                <md-icon class="action-icon">add</md-icon> Фото <md-icon class="action-icon">linked_camera</md-icon>
+              </button>
+              <div class="dict-file-name">{{dictFileName.Name}}</div>
+            </div>
+            <div>
+              <div class="upload-element__file" *ngFor="let file of bankDocumentList[dictFileName.Code]; let i = index">
+                <!--<div class="btn-order">-->
+                <!--<button md-icon-button type="button" mdTooltip="Переместить вверх" color="primary">-->
+                <!--<md-icon class="action-icon">keyboard_arrow_up</md-icon>-->
+                <!--</button>-->
+                <!--<button md-icon-button type="button" mdTooltip="Переместить вниз" color="primary">-->
+                <!--<md-icon class="action-icon">keyboard_arrow_down</md-icon>-->
+                <!--</button>-->
+                <!--</div>-->
+                <button type="button" md-icon-button mdTooltip="Удалить" color="primary"
+                        [disabled]="!checkIsInRole('Agent:Edit') || isDisabledForm || question.Readonly"
+                        (click)="deleteFile(file)"><md-icon class="action-icon">delete</md-icon>
+                </button>
+                <a href="{{host + file.url}}" target="_blank">
+                  <button type="button" md-icon-button mdTooltip="Предварительный просмотр" color="primary">
+                    <md-icon class="action-icon">visibility</md-icon>
+                  </button>
+                </a>
+                <div class="over-el"><img [src]="file?.thumbnail_url" alt=""></div>
+                <span class="ml-1">{{file.name}}</span>
+              </div>
+            </div>
+
+            <div  [hidden]="dictFileName.needHideVideo">
+
+              <div class="mt-1 mb-1 photo">
+
+                <video [hidden]="dictFileName.needHideVideo" #video id="{{'video-' + dictFileName.Code}}" autoplay></video>
+                <button
+                  *ngIf="!dictFileName.needHideVideo"
+                  (click)="takePhotoUpload(dictFileName)"
+
+                  md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+                  type="button">Сделать снимок</button>
+                <canvas id="{{ 'canvas-' + dictFileName.Code }}" width="640" height="480"></canvas>
+                <button
+                  *ngIf="dictFileName.needHideVideo"
+                  type="button"
+                  md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+                  (click)="showVideoUpload(false, dictFileName)"
+                >
+                  Изменить
+                </button>
+                <button
+                  *ngIf="!dictFileName.needHideVideo"
+                  type="button"
+                  md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+                  (click)="showVideo(true, dictFileName)"
+                >
+                  Отменить
+                </button>
+              </div>
+            </div>
+          </div>
+          <div><input #uploadableFiles type="file" multiple="false" style="display:none;" (change)="uploadFiles($event, value, question)"></div>
+        </div>
+
+        <div *ngSwitchCase="'PrintForms'">
+          <app-print-documents [documents]="question.PrintForms" [readOnly]="question.Readonly"></app-print-documents>
+        </div>
+        <div *ngSwitchCase="'Bank'">
+          <app-bank [question]="question" [value]="value"></app-bank>
+        </div>
+        <div *ngSwitchCase="'CardRead'">
+          <button
+            type="button"
+
+            md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+            [disabled]="isDisabledForm || question.Readonly"
+            (click)="readDocument(value, question)"
+          >
+            {{question.Display}}
+          </button>
+
+          <div *ngIf="showLoaderCardRead" class="button-spinner">
+            <md-progress-spinner mode="indeterminate" color="accent"></md-progress-spinner>
+          </div>
+        </div>
+        <button
+          type="button"
+          *ngSwitchCase="'ReadCart'"
+          md-raised-button md-button-sm color="primary" class="ml-2 mt-2"
+          [disabled]="isDisabledForm || question.Readonly"
+          (click)="openCartRead(value, question)"
+        >
+          {{question.Display}}
+        </button>
+
+        <button
+          type="button"
+          *ngSwitchCase="'ChangeStatus'"
+          md-raised-button md-button-sm color="primary" class="ml-2"
+          [disabled]="isDisabledForm || question.Readonly"
+          (click)="changeStatus(value, question)"
+        >
+          {{question.Display}}
+        </button>
+
+        <div *ngSwitchCase="'AddressAutocomplete'">
+          <div class="form-group">
+            <input
+              placeholder="{{question.PlaceHolder}}"
+              [id]="question.Field"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="off"
+              type="text"
+              class="input-autocomplete"
+              [ngModel]="(value || [])[question.Field]"
+              (ngModelChange)="ourValidate($event,value,question)"
+              (blur)="getCallBackForAutoComplete($event,value,question)"
+              #search>
+          </div>
+        </div>
+
+        <div *ngSwitchCase="'CheckPhoneNumber'">
+          <button
+            (click)="sendClientOTP(value, question)"
+            [disabled]="isDisabledForm || question.Readonly"
+            md-raised-button md-button-sm color="primary" class="ml-2 mt-2 mb-1"
+            type="button">Отправить код клиенту</button>
+          <div class="question-label">
+            <label>Введите код</label>
+          </div>
+          <md-input-container dividerColor="primary" style="width: 100%;"  floatPlaceholder="never" *ngIf="!question.QuestionData['data-currency']">
+            <input mdInput
+                   type="text"
+                   placeholder="{{question.PlaceHolder}}"
+                   [id]="question.Field"
+                   [(ngModel)]="userSmsVerificationCode"
+                   [disabled]="isDisabledForm || question.Readonly"
+            >
+          </md-input-container>
+
+          <button
+            (click)="checkClientCode(value, question)"
+            [disabled]="isDisabledForm || question.Readonly"
+            md-raised-button md-button-sm color="primary" class="ml-2 mt-1"
+            type="button">Проверка кода</button>
+        </div>
+        <!--TODO remove later-->
+        <div *ngSwitchDefault></div>
+      </div>
+      <div class="valid mat-text-warn" *ngIf="!validationData[question.Field]?.valid && validationData[question.Field]?.needShowMessage">{{validationData[question.Field]?.validationMessage}}</div>
+    </md-card-content>
+  </ng-container>
+</md-card>

@@ -1,0 +1,160 @@
+<div>
+  <h2>Создать счет-фактуру</h2>
+  <form [formGroup]="invoiceForm" (ngSubmit)="save(invoiceForm)">
+    <md-card class="mt-1 mb-1">
+      <md-card-content>
+        <div fxLayout="row"  fxLayoutWrap="wrap">
+          <button type="button" md-raised-button color="primary" class="mr-2 mb-2"  (click)="getOtp()">Запросить код подтверждения</button>
+        </div>
+        <div fxLayout="row"  fxLayoutWrap="wrap">
+          <div fxFlex.gt-xs="50" fxFlex="100" class="mb-2">
+            <!--<label>Дата счета-фактуры</label>-->
+            <md-input-container class="date-inp">
+              <input mdInput formControlName="InvoiceDateTime" placeholder="Дата счета-фактуры" type="date" [value]="date | date: 'yyyy-MM-dd'">
+            </md-input-container>
+            <small *ngIf="invoiceForm.controls['InvoiceDateTime'].hasError('required') && invoiceForm.controls['InvoiceDateTime'].touched" class="mat-text-warn valid-b">Необходимо ввести дату счета-фактуры.</small>
+          </div>
+          <div fxFlex.gt-xs="50" fxFlex="100" class="mb-2">
+            <md-input-container dividerColor="primary" class="mr-xs invoice-inp">
+              <input type="number" mdInput formControlName="InvoiceNumber" placeholder="Номер телефона клиента" >
+            </md-input-container>
+            <small *ngIf="invoiceForm.controls['InvoiceNumber'].hasError('required') && invoiceForm.controls['InvoiceNumber'].touched" class="mat-text-warn valid-b">Необходимо ввести номер счета-фактуры.</small>
+          </div>
+          <div fxFlex.gt-xs="50" fxFlex="100" class="mb-2">
+            <md-input-container dividerColor="primary" class="mr-xs invoice-inp">
+              <input type="text" mdInput formControlName="OTP" placeholder="Код подтверждения" >
+            </md-input-container>
+            <small *ngIf="invoiceForm.controls['OTP'].hasError('required') && invoiceForm.controls['OTP'].touched" class="mat-text-warn valid-b">Необходимо ввести код подтверждения из SMS</small>
+          </div>
+        </div>
+      </md-card-content>
+    </md-card>
+
+    <!--<label>Номер счета-фактуры</label>-->
+
+    <md-card>
+      <md-card-content>
+        <div formArrayName="Items" class="invoice-table">
+          <table [ngClass]="!desktop? 'mobile-table':''">
+            <thead *ngIf="desktop">
+            <th>№</th>
+            <th>Наименование</th>
+            <th>Цена за единицу</th>
+            <th>Код товара</th>
+            <th *ngIf="shopIsHighRisk">Подкатегория</th>
+            <th *ngIf="shopIsHighRisk">Бренд</th>
+            <th>Количество</th>
+            <th>Общая цена</th>
+            <th></th>
+            </thead>
+            <div *ngIf="!desktop" class="theads-wrapper">
+              <thead *ngFor="let thead of invoiceForm.controls.Items['controls']">
+              <th>№</th>
+              <th>Наименование</th>
+              <th>Цена за единицу</th>
+              <th>Код товара</th>
+              <th *ngIf="shopIsHighRisk">Подкатегория</th>
+              <th *ngIf="shopIsHighRisk">Бренд</th>
+              <th>Количество</th>
+              <th>Общая цена</th>
+              <th></th>
+              </thead>
+            </div>
+            <tbody>
+            <tr *ngFor="let data of invoiceForm.controls.Items['controls']; let i=index" [formGroupName]="i">
+              <td>
+                <md-input-container dividerColor="primary" class="mr-xs">
+                  <input mdInput formControlName="RowId" readonly type="number" [value]="i+1">
+                </md-input-container>
+              </td>
+              <td>
+                <md-input-container dividerColor="primary" class="mr-xs">
+                  <input mdInput formControlName="Name">
+                </md-input-container>
+                <small *ngIf="invoiceForm.controls.Items.controls[i].controls['Name'].hasError('required') && invoiceForm.controls.Items.controls[i].controls['Name'].touched" class="mat-text-warn valid-b">Необходимо ввести наименование.</small>
+              <td>
+                <md-input-container dividerColor="primary" class="mr-xs">
+                  <input mdInput
+                         [textMask]="{mask: mask}"
+                         step="0.01" type="text"
+                         formControlName="Amount">
+                </md-input-container>
+                <small *ngIf="invoiceForm.controls.Items.controls[i].controls['Amount'].hasError('required') && invoiceForm.controls.Items.controls[i].controls['Amount'].touched" class="mat-text-warn valid-b">Необходимо ввести цена за единицу.</small>
+
+              <td>
+                <md-input-container dividerColor="primary" class="mr-xs">
+                  <input mdInput formControlName="ArticleCode">
+                </md-input-container>
+                <small *ngIf="invoiceForm.controls.Items.controls[i].controls['ArticleCode'].hasError('required') && invoiceForm.controls.Items.controls[i].controls['ArticleCode'].touched" class="mat-text-warn valid-b">Максимальная длина кода 64 символа</small>
+
+              <td *ngIf="shopIsHighRisk">
+                <iq-select2 css="form-control input-sm" placeholder="Поиск..." formControlName="ProductSubCategoryId"
+                            [dataSourceProviderName]="'productGroups'"
+                            [dataSourceProvider]="getItemsForSelect.bind(this)"
+                            [iqSelect2ItemAdapter]="entityToIqSelect2Item"
+                            [minimumInputLength]='0' [multiple]='false'
+                            (onSelect)="onSelectCategory($event, i)"
+                            [messages]="{noResultsAvailableMsg: selectNoResultMsg}"
+                            [selectedProvider]="getItems"
+                            class="select-table">
+                </iq-select2>
+                <small *ngIf="invoiceForm.controls.Items.controls[i].controls['ProductSubCategoryId'] &&
+                invoiceForm.controls.Items.controls[i].controls['ProductSubCategoryId'].hasError('required')
+                && invoiceForm.controls.Items.controls[i].controls['ProductSubCategoryId'].touched"
+                       class="mat-text-warn valid">Необходимо выбрать подкатегорию.</small>
+
+
+              <td *ngIf="shopIsHighRisk">
+                <iq-select2 css="form-control input-sm" placeholder="Поиск..." formControlName="BrandId"
+                            [dataSourceProviderName]="'brandsFiltered'"
+                            [dataSourceProvider]="getItemsForSelect.bind(this)"
+                            [iqSelect2ItemAdapter]="entityToIqSelect2Item"
+                            [minimumInputLength]='0' [multiple]='false'
+                            [messages]="{noResultsAvailableMsg: selectNoResultMsg}"
+                            [selectedProvider]="getItems"
+                            class="select-table">
+                </iq-select2>
+                <small *ngIf="invoiceForm.controls.Items.controls[i].controls['BrandId'] &&
+                invoiceForm.controls.Items.controls[i].controls['BrandId'].hasError('required') &&
+                invoiceForm.controls.Items.controls[i].controls['BrandId'].touched"
+                       class="mat-text-warn valid">Необходимо выбрать бренд.</small>
+
+              <td>
+                <md-input-container dividerColor="primary" class="mr-xs">
+                  <input mdInput step="1" type="number" formControlName="NumberPieces">
+                </md-input-container>
+                <small *ngIf="invoiceForm.controls.Items.controls[i].controls['NumberPieces'].hasError('required') && invoiceForm.controls.Items.controls[i].controls['NumberPieces'].touched" class="mat-text-warn valid-b">Необходимо ввести количество.</small>
+              <td>
+                <md-input-container dividerColor="primary" class="mr-xs">
+                  <input mdInput  step="0.01" formControlName="TotalAmount" [textMask]="{mask: mask}">
+                </md-input-container>
+            </td>
+              <td>
+                <button type="button" md-raised-button md-button-sm color="primary" class="ml-2" [disabled]="!(invoiceForm.controls?.Items.controls.length > 1)" (click)="removeAddress(i)">Удалить</button>
+              </td>
+            </tr>
+            <tr class="total-row">
+              <td>Всего:</td>
+              <td></td>
+              <td></td>
+              <td>{{totalProductAmount | thouthandsDelimiter}}</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" md-raised-button color="primary" class="mr-2 mt-2"  (click)="addData()">Добавить товар</button>
+        <button type="submit" class="mt-2" md-raised-button [disabled]="!invoiceForm.valid">Сохранить</button>
+      </md-card-content>
+    </md-card>
+
+  </form>
+
+  <!--<div>-->
+    <!--<button-->
+      <!--md-raised-button md-button-sm color="primary" class="mt-1 new-invoice"-->
+      <!--type="button" [routerLink]="['/credit/ConsumerCredit/create']">Создать новую заявку</button>-->
+  <!--</div>-->
+</div>
+
+
+
